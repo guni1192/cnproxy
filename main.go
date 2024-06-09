@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/guni1192/cnproxy/pkg/middleware/server"
 	"github.com/urfave/cli/v2"
 )
 
@@ -12,7 +13,7 @@ func main() {
 		Name:  "cnproxy",
 		Usage: "cloud native proxy",
 		Action: func(*cli.Context) error {
-			return nil
+			return server.Serve()
 		},
 	}
 
