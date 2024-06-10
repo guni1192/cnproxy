@@ -9,8 +9,9 @@ import (
 )
 
 type CNProxyServer struct {
-	Port    uint
-	Address string
+	Port       uint
+	Address    string
+	EnableOtel bool
 }
 
 func (s *CNProxyServer) Serve() error {
