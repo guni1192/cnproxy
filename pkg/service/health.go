@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func Healthcheck(w http.ResponseWriter, r *http.Request) {
+func (h *CNProxyHandler) Healthcheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	health := map[string]string{
 		"status": "healthy",
