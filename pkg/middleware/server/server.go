@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 
@@ -9,17 +8,33 @@ import (
 	"github.com/guni1192/cnproxy/pkg/service"
 )
 
-type CNProxyServer struct {
-	Context context.Context
-	Logger  *slog.Logger
+type CNProxyHandler struct {
+	Logger *slog.Logger
 }
 
+func (h *CNProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.Logger.Info("request",
+		"method", r.Method,
+		"host", r.Host,
+		"path", r.URL.Path,
+		"protocol", r.Proto,
+	)
+
+	switch r.URL.Path {
+	case "/health":
+		service.Healthcheck(w, r)
+	default:
+		service.HandleProxy(h.Logger)(w, r)
+	}
+}
+
+type CNProxyServer struct{}
+
 func (s *CNProxyServer) Serve() error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", service.Healthcheck)
+	h := &CNProxyHandler{
+		Logger: logger.New(),
+	}
 
-	muxWithLogging := logger.LoggingMiddleware(mux, s.Logger)
-
-	s.Logger.Info("listen on :8080")
-	return http.ListenAndServe(":8080", muxWithLogging)
+	h.Logger.Info("listen on :8080")
+	return http.ListenAndServe(":8080", h)
 }
