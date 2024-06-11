@@ -12,7 +12,6 @@ func (h *CNProxyHandler) HandleProxy(w http.ResponseWriter, r *http.Request) {
 		h.httpsProxy(w, r)
 	} else {
 		h.httpProxy(w, r)
-		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
