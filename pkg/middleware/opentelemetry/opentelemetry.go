@@ -10,15 +10,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
-// func Connect(targetURL string) (*grpc.ClientConn, error) {
-// 	conn, err := grpc.NewClient(targetURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to connect to otlp server: %w", err)
-// 	}
-//
-// 	return conn, nil
-// }
-
 func SetupMetricsProvider(ctx context.Context, res *resource.Resource) (func(context.Context) error, error) {
 	metricsExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithInsecure())
 	if err != nil {
