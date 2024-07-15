@@ -4,3 +4,6 @@ build:
 
 setup:
 	docker compose up -d --build
+
+lint:
+	golangci-lint run ./...

@@ -39,7 +39,11 @@ func (s *CNProxyServer) Serve() error {
 		if err != nil {
 			return fmt.Errorf("failed to setup metrics provider: %v", err)
 		}
-		defer shutdownMetricsProvider(ctx)
+		defer func() {
+			if e := shutdownMetricsProvider(ctx); e != nil {
+				h.Logger.Error("failed to shutdown metrics provider", "error", e)
+			}
+		}()
 
 		meter := otel.Meter("cnproxy")
 
