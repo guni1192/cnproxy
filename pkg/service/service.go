@@ -3,10 +3,13 @@ package service
 import (
 	"log/slog"
 	"net/http"
+
+	"github.com/guni1192/cnproxy/pkg/middleware/opentelemetry"
 )
 
 type CNProxyHandler struct {
-	Logger *slog.Logger
+	Logger       *slog.Logger
+	ProxyMetrics *opentelemetry.ProxyMetrics
 }
 
 func (h *CNProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -20,7 +23,9 @@ func (h *CNProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/health":
 		h.Healthcheck(w, r)
-	default:
+	case "":
 		h.HandleProxy(w, r)
+	default:
+		http.Error(w, "not found", http.StatusNotFound)
 	}
 }

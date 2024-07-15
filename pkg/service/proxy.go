@@ -8,6 +8,9 @@ import (
 )
 
 func (h *CNProxyHandler) HandleProxy(w http.ResponseWriter, r *http.Request) {
+	if h.ProxyMetrics != nil {
+		h.ProxyMetrics.TotalRequests.Add(r.Context(), 1)
+	}
 	if r.Method == http.MethodConnect {
 		h.httpsProxy(w, r)
 	} else {

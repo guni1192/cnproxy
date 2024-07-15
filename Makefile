@@ -3,4 +3,4 @@ build:
 	go build -o ./bin/ ./...
 
 setup:
-	docker compose build
+	docker compose up -d --build

@@ -8,23 +8,21 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
-func Connect() (*grpc.ClientConn, error) {
-	conn, err := grpc.NewClient("localhost:4317", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to otlp server: %v", err)
-	}
+// func Connect(targetURL string) (*grpc.ClientConn, error) {
+// 	conn, err := grpc.NewClient(targetURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to connect to otlp server: %w", err)
+// 	}
+//
+// 	return conn, nil
+// }
 
-	return conn, nil
-}
-
-func SetupMetricsProvider(ctx context.Context, res *resource.Resource, conn *grpc.ClientConn) (func(context.Context) error, error) {
-	metricsExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(conn))
+func SetupMetricsProvider(ctx context.Context, res *resource.Resource) (func(context.Context) error, error) {
+	metricsExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithInsecure())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create the collector exporter: %v", err)
+		return nil, fmt.Errorf("failed to create the collector exporter: %w", err)
 	}
 
 	meterProvider := sdkmetric.NewMeterProvider(
