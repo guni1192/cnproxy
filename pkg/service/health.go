@@ -10,5 +10,10 @@ func (h *CNProxyHandler) Healthcheck(w http.ResponseWriter, r *http.Request) {
 	health := map[string]string{
 		"status": "healthy",
 	}
-	json.NewEncoder(w).Encode(health)
+	err := json.NewEncoder(w).Encode(health)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.Logger.Warn("Failed to encode healthcheck response", "error", err)
+		return
+	}
 }

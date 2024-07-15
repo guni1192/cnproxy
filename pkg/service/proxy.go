@@ -42,8 +42,16 @@ func (h *CNProxyHandler) httpsProxy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer clientConn.Close()
 
-	go io.Copy(destConn, clientConn)
-	io.Copy(clientConn, destConn)
+	go func() {
+		if _, e := io.Copy(destConn, clientConn); e != nil {
+			h.Logger.Warn("failed to copy client to destination", "error", e)
+		}
+	}()
+
+	_, err = io.Copy(clientConn, destConn)
+	if err != nil {
+		h.Logger.Warn("failed to copy destination to client", "error", err)
+	}
 }
 
 func (h *CNProxyHandler) httpProxy(w http.ResponseWriter, r *http.Request) {
@@ -71,5 +79,8 @@ func (h *CNProxyHandler) httpProxy(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(key, value)
 		}
 	}
-	io.Copy(w, resp.Body)
+	_, err = io.Copy(w, resp.Body)
+	if err != nil {
+		h.Logger.Warn("failed to copy response to client", "error", err)
+	}
 }
