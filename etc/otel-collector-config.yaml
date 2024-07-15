@@ -1,0 +1,27 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+
+extensions:
+  health_check: {}
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: cnproxy
+  logging:
+    loglevel: debug
+  debug:
+
+processors:
+  batch:
+
+service:
+  extensions: [health_check]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug, logging, prometheus]

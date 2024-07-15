@@ -11,6 +11,7 @@ import (
 func main() {
 	var port uint
 	var address string
+	var enableMetrics bool
 
 	app := &cli.App{
 		Name:  "cnproxy",
@@ -22,6 +23,7 @@ func main() {
 				Value:       8080,
 				Usage:       "port number",
 				Destination: &port,
+				EnvVars:     []string{"CNPROXY_PORT"},
 			},
 			&cli.StringFlag{
 				Name:        "address",
@@ -29,12 +31,21 @@ func main() {
 				Value:       "0.0.0.0",
 				Usage:       "address",
 				Destination: &address,
+				EnvVars:     []string{"CNPROXY_ADDRESS"},
+			},
+			&cli.BoolFlag{
+				Name:        "enable-metrics",
+				Usage:       "enable metrics (OTLP)",
+				Value:       false,
+				Destination: &enableMetrics,
+				EnvVars:     []string{"CNPROXY_ENABLE_METRICS"},
 			},
 		},
 		Action: func(*cli.Context) error {
 			cnproxyServer := &server.CNProxyServer{
-				Port:    port,
-				Address: address,
+				Port:          port,
+				Address:       address,
+				EnableMetrics: enableMetrics,
 			}
 			return cnproxyServer.Serve()
 		},
