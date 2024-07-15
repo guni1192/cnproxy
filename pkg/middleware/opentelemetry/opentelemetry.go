@@ -11,7 +11,7 @@ import (
 )
 
 func SetupMetricsProvider(ctx context.Context, res *resource.Resource) (func(context.Context) error, error) {
-	metricsExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithInsecure())
+	metricsExporter, err := otlpmetricgrpc.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the collector exporter: %w", err)
 	}
