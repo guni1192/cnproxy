@@ -10,6 +10,7 @@ import (
 type CNProxyHandler struct {
 	Logger       *slog.Logger
 	ProxyMetrics *opentelemetry.ProxyMetrics
+	AllowedFQDNs []string
 }
 
 func (h *CNProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

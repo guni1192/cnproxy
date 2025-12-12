@@ -12,6 +12,7 @@ func main() {
 	var port uint
 	var address string
 	var enableMetrics bool
+	var allowedFQDNs cli.StringSlice
 
 	app := &cli.App{
 		Name:  "cnproxy",
@@ -40,12 +41,19 @@ func main() {
 				Destination: &enableMetrics,
 				EnvVars:     []string{"CNPROXY_ENABLE_METRICS"},
 			},
+			&cli.StringSliceFlag{
+				Name:        "allowed-fqdn",
+				Usage:       "allowed FQDNs for proxy connections (can be specified multiple times)",
+				Destination: &allowedFQDNs,
+				EnvVars:     []string{"CNPROXY_ALLOWED_FQDN"},
+			},
 		},
 		Action: func(*cli.Context) error {
 			cnproxyServer := &server.CNProxyServer{
 				Port:          port,
 				Address:       address,
 				EnableMetrics: enableMetrics,
+				AllowedFQDNs:  allowedFQDNs.Value(),
 			}
 			return cnproxyServer.Serve()
 		},

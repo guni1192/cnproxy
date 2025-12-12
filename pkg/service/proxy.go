@@ -11,11 +11,37 @@ func (h *CNProxyHandler) HandleProxy(w http.ResponseWriter, r *http.Request) {
 	if h.ProxyMetrics != nil {
 		h.ProxyMetrics.TotalRequests.Add(r.Context(), 1)
 	}
+
+	if !h.isFQDNAllowed(r.Host) {
+		http.Error(w, "FQDN not allowed", http.StatusForbidden)
+		h.Logger.Warn("FQDN not allowed", "host", r.Host)
+		return
+	}
+
 	if r.Method == http.MethodConnect {
 		h.httpsProxy(w, r)
 	} else {
 		h.httpProxy(w, r)
 	}
+}
+
+func (h *CNProxyHandler) isFQDNAllowed(host string) bool {
+	if len(h.AllowedFQDNs) == 0 {
+		return true
+	}
+
+	hostname, _, err := net.SplitHostPort(host)
+	if err != nil {
+		hostname = host
+	}
+
+	for _, allowedFQDN := range h.AllowedFQDNs {
+		if hostname == allowedFQDN {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (h *CNProxyHandler) httpsProxy(w http.ResponseWriter, r *http.Request) {

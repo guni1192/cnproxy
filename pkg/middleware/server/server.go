@@ -18,16 +18,18 @@ type CNProxyServer struct {
 	Address string
 
 	EnableMetrics bool
+	AllowedFQDNs  []string
 }
 
 func (s *CNProxyServer) Serve() error {
 	ctx := context.Background()
 
 	h := &service.CNProxyHandler{
-		Logger: logger.New(),
+		Logger:       logger.New(),
+		AllowedFQDNs: s.AllowedFQDNs,
 	}
 
-	h.Logger.Info("server info", "port", s.Port, "address", s.Address, "enable_metrics", s.EnableMetrics)
+	h.Logger.Info("server info", "port", s.Port, "address", s.Address, "enable_metrics", s.EnableMetrics, "allowed_fqdns", s.AllowedFQDNs)
 
 	if s.EnableMetrics {
 		res := resource.NewWithAttributes(
