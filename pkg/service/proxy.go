@@ -51,7 +51,11 @@ func (h *CNProxyHandler) httpsProxy(w http.ResponseWriter, r *http.Request) {
 		h.Logger.Warn("failed to connect", "error", err)
 		return
 	}
-	defer destConn.Close()
+	defer func() {
+		if err := destConn.Close(); err != nil {
+			h.Logger.Warn("failed to close destination connection", "error", err)
+		}
+	}()
 
 	w.WriteHeader(http.StatusOK)
 	hijacker, ok := w.(http.Hijacker)
@@ -66,7 +70,11 @@ func (h *CNProxyHandler) httpsProxy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		h.Logger.Error("failed to hijack", "error", err)
 	}
-	defer clientConn.Close()
+	defer func() {
+		if err := clientConn.Close(); err != nil {
+			h.Logger.Warn("failed to close client connection", "error", err)
+		}
+	}()
 
 	go func() {
 		if _, e := io.Copy(destConn, clientConn); e != nil {
@@ -97,7 +105,11 @@ func (h *CNProxyHandler) httpProxy(w http.ResponseWriter, r *http.Request) {
 		h.Logger.Error("failed to send request", "error", err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			h.Logger.Warn("failed to close response body", "error", err)
+		}
+	}()
 
 	w.WriteHeader(resp.StatusCode)
 	for key, values := range resp.Header {
