@@ -4,6 +4,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -36,12 +37,29 @@ func (h *CNProxyHandler) isFQDNAllowed(host string) bool {
 	}
 
 	for _, allowedFQDN := range h.AllowedFQDNs {
-		if hostname == allowedFQDN {
+		if matchHost(allowedFQDN, hostname) {
 			return true
 		}
 	}
 
 	return false
+}
+
+// matchHost reports whether host matches pattern.
+//
+// A leading "*." in pattern is a wildcard for one or more DNS labels, so
+// "*.example.com" matches "a.example.com" and "a.b.example.com" but not
+// "example.com" itself. Any other pattern is an exact, case-insensitive
+// match.
+func matchHost(pattern, host string) bool {
+	pattern = strings.ToLower(pattern)
+	host = strings.ToLower(host)
+	if suffix, ok := strings.CutPrefix(pattern, "*."); ok {
+		// host must end in ".suffix" with at least one label before it.
+		dotSuffix := "." + suffix
+		return strings.HasSuffix(host, dotSuffix) && len(host) > len(dotSuffix)
+	}
+	return pattern == host
 }
 
 func (h *CNProxyHandler) httpsProxy(w http.ResponseWriter, r *http.Request) {
