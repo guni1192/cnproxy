@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/guni1192/cnproxy/pkg/config"
 	"github.com/guni1192/cnproxy/pkg/middleware/logger"
 	"github.com/guni1192/cnproxy/pkg/middleware/opentelemetry"
 	"github.com/guni1192/cnproxy/pkg/service"
@@ -19,6 +20,7 @@ type CNProxyServer struct {
 
 	EnableMetrics bool
 	AllowedFQDNs  []string
+	HTTPFilters   []config.HTTPFilter
 }
 
 func (s *CNProxyServer) Serve() error {
@@ -27,9 +29,10 @@ func (s *CNProxyServer) Serve() error {
 	h := &service.CNProxyHandler{
 		Logger:       logger.New(),
 		AllowedFQDNs: s.AllowedFQDNs,
+		HTTPFilters:  s.HTTPFilters,
 	}
 
-	h.Logger.Info("server info", "port", s.Port, "address", s.Address, "enable_metrics", s.EnableMetrics, "allowed_fqdns", s.AllowedFQDNs)
+	h.Logger.Info("server info", "port", s.Port, "address", s.Address, "enable_metrics", s.EnableMetrics, "allowed_fqdns", s.AllowedFQDNs, "http_filters", s.HTTPFilters)
 
 	if s.EnableMetrics {
 		res := resource.NewWithAttributes(

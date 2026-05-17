@@ -42,6 +42,12 @@ export CNPROXY_ALLOWED_FQDN="example.com,google.com"
 cnproxy
 ```
 
+Entries starting with `*.` are wildcards that match one or more subdomain labels. For example `*.example.com` matches `api.example.com` and `v1.api.example.com`, but not the apex `example.com` itself — list it separately if you want to allow the apex too.
+
+```shell
+cnproxy --allowed-fqdn '*.example.com' --allowed-fqdn example.com
+```
+
 When an FQDN is not in the allow list, the proxy will return `403 Forbidden`.
 
 ```shell
@@ -52,11 +58,48 @@ curl -x http://localhost:8080 http://example.com
 curl -x http://localhost:8080 http://blocked-site.com
 ```
 
+### Config File
+
+Instead of CLI flags, you can point cnproxy at a YAML file with `--config` (or `CNPROXY_CONFIG`). Any CLI flag explicitly set on the command line overrides the config file value.
+
+```yaml
+# cnproxy.yaml
+port: 8080
+address: 0.0.0.0
+enable_metrics: false
+allowed_fqdns:
+  - example.com
+  - "*.example.com"
+  - api.github.com
+
+http_filters:
+  - host: api.example.com
+    methods: [GET, POST]
+    paths:
+      - /v1/users
+      - /v1/items/*
+  - host: "*.public.example.com"
+    paths: [/health]
+```
+
+```shell
+cnproxy --config ./cnproxy.yaml
+```
+
+### HTTP Method and Path Filter
+
+`http_filters` restricts plain HTTP traffic further. When at least one rule is configured, a plain HTTP request must match a rule to be proxied: the request's host must match `host` (with the same `*.` wildcard form as `allowed_fqdns`), its method must appear in `methods`, and its path must match one of `paths`. An empty `methods` means "any method"; an empty `paths` means "any path"; omitting both is a host-only rule that allows everything from that host.
+
+A path pattern ending in `/*` is a prefix match — `/v1/items/*` matches `/v1/items`, `/v1/items/42`, and `/v1/items/42/sub`. Any other path is matched exactly.
+
+Requests that fail the filter get `403 Forbidden`. CONNECT (HTTPS) tunnels carry encrypted payloads, so `http_filters` cannot inspect their method or path — CONNECT is gated solely by `allowed_fqdns`.
+
 ### Command-line Options
 
 ```
+--config value, -c value       path to YAML config file [$CNPROXY_CONFIG]
 --port value, -p value         port number (default: 8080) [$CNPROXY_PORT]
 --address value, -a value      address (default: "0.0.0.0") [$CNPROXY_ADDRESS]
 --enable-metrics               enable metrics (OTLP) (default: false) [$CNPROXY_ENABLE_METRICS]
---allowed-fqdn value           allowed FQDNs for proxy connections (can be specified multiple times) [$CNPROXY_ALLOWED_FQDN]
+--allowed-fqdn value           allowed FQDNs for proxy connections (can be specified multiple times; '*.example.com' matches any subdomain) [$CNPROXY_ALLOWED_FQDN]
 ```

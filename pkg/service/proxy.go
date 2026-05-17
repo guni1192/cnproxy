@@ -4,6 +4,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -19,10 +20,81 @@ func (h *CNProxyHandler) HandleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodConnect {
+		// CONNECT carries an encrypted payload — method/path filtering is not
+		// possible. The FQDN allowlist above is the only gate.
 		h.httpsProxy(w, r)
-	} else {
-		h.httpProxy(w, r)
+		return
 	}
+
+	if !h.isHTTPRequestAllowed(r) {
+		http.Error(w, "HTTP request not allowed", http.StatusForbidden)
+		h.Logger.Warn("HTTP request not allowed", "host", r.Host, "method", r.Method, "path", r.URL.Path)
+		return
+	}
+	h.httpProxy(w, r)
+}
+
+// isHTTPRequestAllowed returns true if a plain HTTP request passes the
+// http_filters list. When no filters are configured, the check is a no-op.
+// When filters are configured, the request must match at least one rule:
+// host wildcard matches, method is in (or list is empty), and path matches
+// (or list is empty).
+func (h *CNProxyHandler) isHTTPRequestAllowed(r *http.Request) bool {
+	if len(h.HTTPFilters) == 0 {
+		return true
+	}
+
+	hostname, _, err := net.SplitHostPort(r.Host)
+	if err != nil {
+		hostname = r.Host
+	}
+
+	for _, f := range h.HTTPFilters {
+		if !matchHost(f.Host, hostname) {
+			continue
+		}
+		if !methodAllowed(f.Methods, r.Method) {
+			continue
+		}
+		if !pathAllowed(f.Paths, r.URL.Path) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func methodAllowed(allowed []string, method string) bool {
+	if len(allowed) == 0 {
+		return true
+	}
+	for _, m := range allowed {
+		if strings.EqualFold(m, method) {
+			return true
+		}
+	}
+	return false
+}
+
+// pathAllowed reports whether path matches any of the patterns. A pattern
+// ending in "/*" matches any path with that prefix (including the prefix
+// itself without the trailing slash); any other pattern is matched exactly.
+func pathAllowed(patterns []string, path string) bool {
+	if len(patterns) == 0 {
+		return true
+	}
+	for _, p := range patterns {
+		if prefix, ok := strings.CutSuffix(p, "/*"); ok {
+			if path == prefix || strings.HasPrefix(path, prefix+"/") {
+				return true
+			}
+			continue
+		}
+		if p == path {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *CNProxyHandler) isFQDNAllowed(host string) bool {
@@ -36,12 +108,29 @@ func (h *CNProxyHandler) isFQDNAllowed(host string) bool {
 	}
 
 	for _, allowedFQDN := range h.AllowedFQDNs {
-		if hostname == allowedFQDN {
+		if matchHost(allowedFQDN, hostname) {
 			return true
 		}
 	}
 
 	return false
+}
+
+// matchHost reports whether host matches pattern.
+//
+// A leading "*." in pattern is a wildcard for one or more DNS labels, so
+// "*.example.com" matches "a.example.com" and "a.b.example.com" but not
+// "example.com" itself. Any other pattern is an exact, case-insensitive
+// match.
+func matchHost(pattern, host string) bool {
+	pattern = strings.ToLower(pattern)
+	host = strings.ToLower(host)
+	if suffix, ok := strings.CutPrefix(pattern, "*."); ok {
+		// host must end in ".suffix" with at least one label before it.
+		dotSuffix := "." + suffix
+		return strings.HasSuffix(host, dotSuffix) && len(host) > len(dotSuffix)
+	}
+	return pattern == host
 }
 
 func (h *CNProxyHandler) httpsProxy(w http.ResponseWriter, r *http.Request) {
