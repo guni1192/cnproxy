@@ -24,7 +24,7 @@ func TestHttpsProxyConnectResponseHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen backend: %v", err)
 	}
-	defer backend.Close()
+	defer func() { _ = backend.Close() }()
 
 	go func() {
 		for {
@@ -33,7 +33,7 @@ func TestHttpsProxyConnectResponseHeaders(t *testing.T) {
 				return
 			}
 			go func(c net.Conn) {
-				defer c.Close()
+				defer func() { _ = c.Close() }()
 				_, _ = io.Copy(c, c) // echo
 			}(c)
 		}
@@ -60,7 +60,7 @@ func TestHttpsProxyConnectResponseHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial proxy: %v", err)
 	}
-	defer proxyConn.Close()
+	defer func() { _ = proxyConn.Close() }()
 
 	target := backend.Addr().String()
 	if _, err := fmt.Fprintf(proxyConn,
@@ -76,7 +76,7 @@ func TestHttpsProxyConnectResponseHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read CONNECT response: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status: want 200, got %d", resp.StatusCode)
@@ -114,7 +114,7 @@ func TestHttpsProxyForwardsPipelinedClientBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen backend: %v", err)
 	}
-	defer backend.Close()
+	defer func() { _ = backend.Close() }()
 
 	received := make(chan []byte, 1)
 	go func() {
@@ -122,7 +122,7 @@ func TestHttpsProxyForwardsPipelinedClientBytes(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer c.Close()
+		defer func() { _ = c.Close() }()
 		buf := make([]byte, 64)
 		n, err := c.Read(buf)
 		if err != nil {
@@ -145,7 +145,7 @@ func TestHttpsProxyForwardsPipelinedClientBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial proxy: %v", err)
 	}
-	defer proxyConn.Close()
+	defer func() { _ = proxyConn.Close() }()
 
 	target := backend.Addr().String()
 	const pipelined = "PIPELINED-BYTES"
@@ -165,7 +165,7 @@ func TestHttpsProxyForwardsPipelinedClientBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read CONNECT response: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status: want 200, got %d", resp.StatusCode)
 	}
