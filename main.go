@@ -88,6 +88,7 @@ func main() {
 				Address:       cfg.Address,
 				EnableMetrics: cfg.EnableMetrics,
 				AllowedFQDNs:  cfg.AllowedFQDNs,
+				HTTPFilters:   cfg.HTTPFilters,
 			}
 			return cnproxyServer.Serve()
 		},

@@ -18,6 +18,12 @@ enable_metrics: true
 allowed_fqdns:
   - example.com
   - "*.example.com"
+http_filters:
+  - host: api.example.com
+    methods: [GET, POST]
+    paths:
+      - /v1/users
+      - /v1/items/*
 `
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatalf("write: %v", err)
@@ -33,6 +39,13 @@ allowed_fqdns:
 		Address:       "127.0.0.1",
 		EnableMetrics: true,
 		AllowedFQDNs:  []string{"example.com", "*.example.com"},
+		HTTPFilters: []HTTPFilter{
+			{
+				Host:    "api.example.com",
+				Methods: []string{"GET", "POST"},
+				Paths:   []string{"/v1/users", "/v1/items/*"},
+			},
+		},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("Load mismatch\n got: %#v\nwant: %#v", got, want)

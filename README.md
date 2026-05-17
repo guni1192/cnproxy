@@ -71,11 +71,28 @@ allowed_fqdns:
   - example.com
   - "*.example.com"
   - api.github.com
+
+http_filters:
+  - host: api.example.com
+    methods: [GET, POST]
+    paths:
+      - /v1/users
+      - /v1/items/*
+  - host: "*.public.example.com"
+    paths: [/health]
 ```
 
 ```shell
 cnproxy --config ./cnproxy.yaml
 ```
+
+### HTTP Method and Path Filter
+
+`http_filters` restricts plain HTTP traffic further. When at least one rule is configured, a plain HTTP request must match a rule to be proxied: the request's host must match `host` (with the same `*.` wildcard form as `allowed_fqdns`), its method must appear in `methods`, and its path must match one of `paths`. An empty `methods` means "any method"; an empty `paths` means "any path"; omitting both is a host-only rule that allows everything from that host.
+
+A path pattern ending in `/*` is a prefix match — `/v1/items/*` matches `/v1/items`, `/v1/items/42`, and `/v1/items/42/sub`. Any other path is matched exactly.
+
+Requests that fail the filter get `403 Forbidden`. CONNECT (HTTPS) tunnels carry encrypted payloads, so `http_filters` cannot inspect their method or path — CONNECT is gated solely by `allowed_fqdns`.
 
 ### Command-line Options
 

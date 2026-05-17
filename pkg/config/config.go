@@ -8,6 +8,15 @@
 //	allowed_fqdns:
 //	  - example.com
 //	  - "*.example.com"
+//	http_filters:
+//	  - host: api.example.com
+//	    methods: [GET, POST]
+//	    paths:
+//	      - /v1/users
+//	      - /v1/items/*
+//
+// CONNECT (HTTPS) tunnels carry encrypted payloads, so http_filters apply
+// only to plain HTTP requests. CONNECT is gated solely by allowed_fqdns.
 package config
 
 import (
@@ -19,10 +28,23 @@ import (
 )
 
 type Config struct {
-	Port          uint     `yaml:"port"`
-	Address       string   `yaml:"address"`
-	EnableMetrics bool     `yaml:"enable_metrics"`
-	AllowedFQDNs  []string `yaml:"allowed_fqdns"`
+	Port          uint         `yaml:"port"`
+	Address       string       `yaml:"address"`
+	EnableMetrics bool         `yaml:"enable_metrics"`
+	AllowedFQDNs  []string     `yaml:"allowed_fqdns"`
+	HTTPFilters   []HTTPFilter `yaml:"http_filters"`
+}
+
+// HTTPFilter restricts plain HTTP traffic to a host.
+//
+// An empty Methods means "any method"; an empty Paths means "any path".
+// Host supports the same wildcard form as allowed_fqdns ("*.example.com").
+// A path ending in "/*" is a prefix match against the portion before "/*";
+// any other path must match exactly.
+type HTTPFilter struct {
+	Host    string   `yaml:"host"`
+	Methods []string `yaml:"methods"`
+	Paths   []string `yaml:"paths"`
 }
 
 // Load reads and parses a YAML config file from path.
