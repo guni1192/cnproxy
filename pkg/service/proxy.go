@@ -57,7 +57,12 @@ func (h *CNProxyHandler) httpsProxy(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	w.WriteHeader(http.StatusOK)
+	// Hijack BEFORE writing any response. If we let net/http synthesize the
+	// 200 it adds Transfer-Encoding: chunked (no Content-Length was set), and
+	// RFC 7230 §3.3 / RFC 9112 §6.1 forbid Transfer-Encoding and
+	// Content-Length on a 2xx response to CONNECT. Conforming clients (Go's
+	// net/http transport in particular) then read the tunnel stream through a
+	// chunked decoder, corrupting the TLS handshake.
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
 		http.Error(w, "hijack not supported", http.StatusInternalServerError)
@@ -65,10 +70,11 @@ func (h *CNProxyHandler) httpsProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientConn, _, err := hijacker.Hijack()
+	clientConn, brw, err := hijacker.Hijack()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		h.Logger.Error("failed to hijack", "error", err)
+		return
 	}
 	defer func() {
 		if err := clientConn.Close(); err != nil {
@@ -76,14 +82,25 @@ func (h *CNProxyHandler) httpsProxy(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	if _, err := brw.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
+		h.Logger.Warn("failed to write 200 response", "error", err)
+		return
+	}
+	if err := brw.Flush(); err != nil {
+		h.Logger.Warn("failed to flush 200 response", "error", err)
+		return
+	}
+
+	// Read from brw.Reader, not clientConn, so any bytes the client pipelined
+	// after the CONNECT request (e.g. the start of a TLS ClientHello) that
+	// landed in net/http's buffered reader are forwarded instead of dropped.
 	go func() {
-		if _, e := io.Copy(destConn, clientConn); e != nil {
+		if _, e := io.Copy(destConn, brw.Reader); e != nil {
 			h.Logger.Warn("failed to copy client to destination", "error", e)
 		}
 	}()
 
-	_, err = io.Copy(clientConn, destConn)
-	if err != nil {
+	if _, err := io.Copy(clientConn, destConn); err != nil {
 		h.Logger.Warn("failed to copy destination to client", "error", err)
 	}
 }
